@@ -27,11 +27,43 @@ final class Mesh {
 
     /** Box from (x0,y0,z0) to (x1,y1,z1) in pixels; color goes from cA at x0 to cB at x1. */
     void box(Xf xf, float x0, float y0, float z0, float x1, float y1, float z1, int cA, int cB) {
+        emit(xf, x0, y0, z0, x1, y1, z1, cA, cB, null, 1, 1);
+    }
+
+    /**
+     * Box with a vanilla-style unwrapped texture (like ModelPart.addBox): position/size in pixels, texture
+     * offset (u,v) in a texW x texH image, optional grow (CubeDeformation). The color tints the texture.
+     */
+    void texBox(Xf xf, float x, float y, float z, int w, int h, int d, float grow,
+                int u, int v, int texW, int texH, int color) {
+        int[][] r = {
+                {u + d, v + d, u + d + w, v + d + h},                 // north (-z)
+                {u + 2 * d + w, v + d, u + 2 * d + 2 * w, v + d + h}, // south (+z)
+                {u, v + d, u + d, v + d + h},                         // west  (-x)
+                {u + d + w, v + d, u + 2 * d + w, v + d + h},         // east  (+x)
+                {u + d, v, u + d + w, v + d},                         // up    (-y)
+                {u + d + w, v, u + d + 2 * w, v + d}                  // down  (+y)
+        };
+        emit(xf, x - grow, y - grow, z - grow, x + w + grow, y + h + grow, z + d + grow, color, color, r, texW, texH);
+    }
+
+    private void emit(Xf xf, float x0, float y0, float z0, float x1, float y1, float z1,
+                      int cA, int cB, int[][] uv, int texW, int texH) {
         for (int f = 0; f < 6; f++) {
             float[] n = xf.rotate(NORMALS[f][0], NORMALS[f][1], NORMALS[f][2]);
+            float nl = (float) Math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+            if (nl > 0.0001f) { n[0] /= nl; n[1] /= nl; n[2] /= nl; }
+            float[] us = null, vs = null;
+            if (uv != null) {
+                float ua = uv[f][0] / (float) texW, va = uv[f][1] / (float) texH;
+                float ub = uv[f][2] / (float) texW, vb = uv[f][3] / (float) texH;
+                us = new float[]{ua, ub, ub, ua};   // corners: top-left, top-right, bottom-right, bottom-left
+                vs = new float[]{va, va, vb, vb};
+            }
             for (int pass = 0; pass < 2; pass++) {
                 for (int k = 0; k < 4; k++) {
-                    int idx = FACES[f][pass == 0 ? k : 3 - k];
+                    int ci = pass == 0 ? k : 3 - k;
+                    int idx = FACES[f][ci];
                     boolean bx = (idx & 1) != 0;
                     float px = bx ? x1 : x0;
                     float py = (idx & 2) != 0 ? y1 : y0;
@@ -40,7 +72,7 @@ final class Mesh {
                     float s = pass == 0 ? 1f : -1f;
                     vc.addVertex(pose, p[0] / 16f, p[1] / 16f, p[2] / 16f)
                             .setColor(bx ? cB : cA)
-                            .setUv(0.5f, 0.5f)
+                            .setUv(us == null ? 0.5f : us[ci], vs == null ? 0.5f : vs[ci])
                             .setOverlay(OverlayTexture.NO_OVERLAY)
                             .setLight(light)
                             .setNormal(pose, n[0] * s, n[1] * s, n[2] * s);

@@ -45,8 +45,10 @@ public final class BoltMcConfig {
     public static final String DEFAULT_SERVER_URL = "";
     /** Optional override in config/boltmc.json. Empty = DEFAULT_SERVER_URL. */
     public String serverUrl = "";
-    /** My install's private key. The server uses it to prove messages addressed to me are really for me. */
+    /** Session token given by the relay after register / login. Proves messages addressed to me are really for me. */
     public String secret = "";
+    /** The player name the token belongs to. If your name changes you have to log in again. */
+    public String accountName = "";
     public List<Friend> friends = new ArrayList<>();
 
     public static final class Friend {

@@ -20,11 +20,16 @@ public final class FriendsManager {
 
     private static final Pattern VALID = Pattern.compile("[A-Za-z0-9_]{1,16}");
 
-    public static AddResult addByName(String raw) {
+    /** Checks the typed name locally (format, not yourself, not already a friend). Does not add anyone. */
+    public static AddResult check(String raw) {
         String name = raw == null ? "" : raw.trim();
         if (!VALID.matcher(name).matches()) return AddResult.INVALID;
         if (name.equalsIgnoreCase(Minecraft.getInstance().getUser().getName())) return AddResult.IS_YOU;
-        return add(name);
+        String id = name.toLowerCase(Locale.ROOT);
+        for (BoltMcConfig.Friend f : BoltMcConfig.get().friends) {
+            if (f.id.equals(id)) return AddResult.ALREADY_FRIENDS;
+        }
+        return AddResult.OK;
     }
 
     public static AddResult add(String name) {

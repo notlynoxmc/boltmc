@@ -1,6 +1,7 @@
 package dev.boltmc.mixin;
 
 import dev.boltmc.MenuButton;
+import dev.boltmc.account.AccountManager;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -11,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Adds the Bolt Mc button to the main menu. */
-@Mixin(TitleScreen.class)
+@Mixin(value = TitleScreen.class, priority = 1500)
 public abstract class TitleScreenMixin extends Screen {
     protected TitleScreenMixin(Component title) { super(title); }
 
@@ -19,5 +20,6 @@ public abstract class TitleScreenMixin extends Screen {
     private void boltmc$addButton(CallbackInfo ci) {
         Button b = MenuButton.create(this);
         if (b != null) this.addRenderableWidget(b);
+        if (AccountManager.needsPrompt()) AccountManager.prompt(this); // first launch: ask for register / login
     }
 }

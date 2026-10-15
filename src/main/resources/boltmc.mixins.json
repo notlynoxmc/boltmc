@@ -1,5 +1,5 @@
 {
-  "required": false,
+  "required": true,
   "package": "dev.boltmc.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
@@ -7,5 +7,5 @@
     "TitleScreenMixin",
     "PauseScreenMixin"
   ],
-  "injectors": { "defaultRequire": 0 }
+  "injectors": { "defaultRequire": 1 }
 }

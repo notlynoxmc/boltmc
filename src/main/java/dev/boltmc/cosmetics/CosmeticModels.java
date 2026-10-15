@@ -16,23 +16,16 @@ final class CosmeticModels {
         return 0xFF000000 | (r << 16) | (g << 8) | b;
     }
 
-    // ------------------------------------------------------------------ wings (small, flapping gently)
-
-    private static final float[] FEATHER_ANGLE = {-64, -46, -29, -13, 3, 19};
-    private static final float[] FEATHER_LEN = {7f, 9f, 10.5f, 10f, 8.5f, 6.5f};
+    // ------------------------------------------------------------------ wings: small elytra-style wings (textured)
 
     static void wings(Mesh m, Xf body, int tint, long ms) {
-        float spread = 24f + (float) Math.sin(ms / 260.0) * 6f;
-        int dark = shade(tint, 0.72f), mid = shade(tint, 0.9f), light = shade(tint, 1.0f);
+        float flap = (float) Math.sin(ms / 300.0) * 0.07f;
         for (int side = 1; side >= -1; side -= 2) {
-            Xf root = body.copy().scaleLocal(side, 1, 1).translate(1.4f, 1.2f, 3.0f).ry(-spread * DEG);
-            m.box(root.copy().rz(-58 * DEG), 0, -0.9f, 0, 5.5f, 0.9f, 1.1f, dark, dark); // shoulder bone
-            for (int i = 0; i < FEATHER_ANGLE.length; i++) {
-                float a = FEATHER_ANGLE[i] * DEG;
-                float len = FEATHER_LEN[i];
-                m.box(root.copy().rz(a), 0, -1.1f, 0.1f, len, 1.1f, 0.9f, dark, mid);              // long feather
-                m.box(root.copy().rz(a + 4 * DEG), 0.8f, -1.0f, 0.9f, len * 0.62f, 1.0f, 1.5f, mid, light); // covert
-            }
+            Xf w = body.copy().scaleLocal(side, 1, 1)
+                    .translate(1.0f, -0.5f, 2.0f)          // hinge on the upper back
+                    .scaleLocal(0.6f, 0.6f, 0.6f)           // small
+                    .rotZYX(-(0.26f + flap), 0, 0.30f);     // folded-elytra pose, opening outward
+            m.texBox(w, 0, 0, 0, 10, 20, 2, 0.5f, 22, 0, 64, 32, 0xFF000000 | tint);
         }
     }
 
@@ -51,22 +44,13 @@ final class CosmeticModels {
 
     // ------------------------------------------------------------------ hats
 
-    static void crown(Mesh m, Xf head, int tint) {
-        int gold = shade(tint, 1.0f), dark = shade(tint, 0.78f);
-        m.box(head, -4.5f, -10.2f, -4.6f, 4.5f, -8.1f, -3.8f, gold);
-        m.box(head, -4.5f, -10.2f, 3.8f, 4.5f, -8.1f, 4.6f, gold);
-        m.box(head, -4.6f, -10.2f, -3.8f, -3.8f, -8.1f, 3.8f, dark);
-        m.box(head, 3.8f, -10.2f, -3.8f, 4.6f, -8.1f, 3.8f, dark);
-        float[] xs = {-3.6f, -1.2f, 1.2f, 3.6f};
-        for (float x : xs) {
-            m.box(head, x - 0.7f, -12.4f, -4.6f, x + 0.7f, -10.2f, -3.8f, gold);
-            m.box(head, x - 0.7f, -12.4f, 3.8f, x + 0.7f, -10.2f, 4.6f, gold);
-        }
-        for (float z : new float[]{-1.2f, 1.2f}) {
-            m.box(head, -4.6f, -12.4f, z - 0.7f, -3.8f, -10.2f, z + 0.7f, dark);
-            m.box(head, 3.8f, -12.4f, z - 0.7f, 4.6f, -10.2f, z + 0.7f, dark);
-        }
-        m.box(head, -0.8f, -9.8f, -4.85f, 0.8f, -8.6f, -4.55f, 0xFFE53935); // red gem
+    // gold helmet (textured) with a small crown on top
+    static void helmet(Mesh m, Xf head, int tint) {
+        int c = 0xFF000000 | tint;
+        m.texBox(head, -4, -8, -4, 8, 8, 8, 0.9f, 0, 0, 64, 32, c);
+        float[][] spikes = {{-3.5f, -3.5f}, {2.5f, -3.5f}, {-3.5f, 2.5f}, {2.5f, 2.5f}};
+        for (float[] p : spikes) m.texBox(head, p[0], -11.7f, p[1], 1, 3, 1, 0f, 32, 0, 64, 32, c);
+        m.texBox(head, -0.5f, -12.9f, -0.5f, 1, 4, 1, 0f, 32, 0, 64, 32, c);
     }
 
     static void cap(Mesh m, Xf head, int tint) {

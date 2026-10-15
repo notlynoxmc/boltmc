@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Adds the Bolt Mc button to the in-game pause menu. */
-@Mixin(PauseScreen.class)
+@Mixin(value = PauseScreen.class, priority = 1500)
 public abstract class PauseScreenMixin extends Screen {
     protected PauseScreenMixin(Component title) { super(title); }
 

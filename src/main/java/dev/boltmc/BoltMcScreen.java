@@ -1,5 +1,6 @@
 package dev.boltmc;
 
+import dev.boltmc.account.AccountManager;
 import dev.boltmc.friends.ChatRelay;
 import dev.boltmc.friends.FriendsManager;
 import net.fabricmc.loader.api.FabricLoader;
@@ -22,7 +23,7 @@ public class BoltMcScreen extends Screen {
         Tab(String label) { this.label = label; }
     }
 
-    private enum Kind { SECTION, MASTER, COSMETIC, ADD_FRIEND, FRIEND, STATUS, NOTE }
+    private enum Kind { SECTION, MASTER, ACCOUNT, COSMETIC, ADD_FRIEND, FRIEND, STATUS, NOTE }
 
     private static final class Item {
         Kind kind;
@@ -46,6 +47,7 @@ public class BoltMcScreen extends Screen {
     private final List<Button> friendOpenButtons = new ArrayList<>();
     private final List<Button> friendRemoveButtons = new ArrayList<>();
     private Button masterToggle;
+    private Button accountButton;
     private Button addFriendButton;
     private EditBox searchBox;
     private EditBox addFriendBox;
@@ -113,6 +115,12 @@ public class BoltMcScreen extends Screen {
         }).bounds(cx1, cardTop, cx2 - cx1, 30).build();
         addRenderableWidget(masterToggle);
 
+        accountButton = Button.builder(Component.empty(), b -> {
+            if (AccountManager.loggedIn()) AccountManager.invalidate();
+            else this.minecraft.setScreenAndShow(new BoltMcAuthScreen(this));
+        }).bounds(cx1, cardTop, cx2 - cx1, 30).build();
+        addRenderableWidget(accountButton);
+
         for (Cosmetic c : Cosmetic.values()) {
             Button tbtn = Button.builder(Component.empty(), b -> {
                 boolean now = !cfg.state(c).on;
@@ -165,19 +173,35 @@ public class BoltMcScreen extends Screen {
     private void addFriend() {
         String name = addFriendBox.getValue().trim();
         if (name.isEmpty()) return;
-        FriendsManager.AddResult r = FriendsManager.addByName(name);
-        notice = switch (r) {
-            case OK -> "Added " + name + ".";
-            case ALREADY_FRIENDS -> name + " is already a friend.";
-            case IS_YOU -> "That's you!";
-            case INVALID -> "Names are 1-16 letters, numbers or _ .";
-        };
-        noticeUntil = System.currentTimeMillis() + 3000;
-        if (r == FriendsManager.AddResult.OK) {
-            addFriendBox.setValue("");
-            rebuildFriendButtons();
+        FriendsManager.AddResult r = FriendsManager.check(name);
+        if (r != FriendsManager.AddResult.OK) {
+            say(switch (r) {
+                case ALREADY_FRIENDS -> name + " is already a friend.";
+                case IS_YOU -> "That's you!";
+                default -> "Names are 1-16 letters, numbers or _ .";
+            });
+            return;
         }
-        relayout();
+        say("Checking " + name + "...");
+        AccountManager.exists(name, res -> {
+            switch (res) {
+                case YES -> {
+                    FriendsManager.add(name);
+                    addFriendBox.setValue("");
+                    rebuildFriendButtons();
+                    say("Added " + name + ".");
+                }
+                case NO -> say(name + " doesn't have Bolt Mc yet.");
+                case NOT_SIGNED_IN -> say("Sign in to Bolt Mc first (General tab).");
+                default -> say("Couldn't reach the relay.");
+            }
+            relayout();
+        });
+    }
+
+    private void say(String text) {
+        notice = text;
+        noticeUntil = System.currentTimeMillis() + 3500;
     }
 
     private void setTab(Tab t) {
@@ -203,6 +227,8 @@ public class BoltMcScreen extends Screen {
             case GENERAL -> {
                 y = add(y, Kind.SECTION, "Main", null, null, SEC_H, GAP);
                 y = add(y, Kind.MASTER, null, null, null, 30, GAP);
+                y = add(y, Kind.SECTION, "Account", null, null, SEC_H, GAP);
+                y = add(y, Kind.ACCOUNT, null, null, null, 30, GAP);
                 y = add(y, Kind.SECTION, "About", null, null, SEC_H, GAP);
                 y = add(y, Kind.NOTE, "Bolt Mc v" + version + "  -  MC " + mcVersion + " [Fabric]", null, null, 12, 0);
             }
@@ -234,6 +260,7 @@ public class BoltMcScreen extends Screen {
         build();
 
         masterToggle.visible = false;
+        accountButton.visible = false;
         for (Button b : cosmeticToggleButtons) b.visible = false;
         addFriendBox.visible = false; addFriendBox.active = false;
         addFriendButton.visible = false;
@@ -247,6 +274,11 @@ public class BoltMcScreen extends Screen {
                     masterToggle.setX(cx1); masterToggle.setY(it.y);
                     masterToggle.setWidth(cx2 - cx1); masterToggle.setHeight(it.h);
                     masterToggle.visible = true;
+                }
+                case ACCOUNT -> {
+                    accountButton.setX(cx1); accountButton.setY(it.y);
+                    accountButton.setWidth(cx2 - cx1); accountButton.setHeight(it.h);
+                    accountButton.visible = true;
                 }
                 case COSMETIC -> {
                     int idx = it.cosmetic.ordinal();
@@ -335,6 +367,7 @@ public class BoltMcScreen extends Screen {
             switch (it.kind) {
                 case SECTION -> drawSection(g, it);
                 case MASTER -> drawMaster(g, it, mouseX, mouseY);
+                case ACCOUNT -> drawAccount(g, it, mouseX, mouseY);
                 case COSMETIC -> drawCosmetic(g, it, mouseX, mouseY);
                 case ADD_FRIEND -> drawAddFriend(g, it);
                 case FRIEND -> drawFriend(g, it, mouseX, mouseY);
@@ -433,6 +466,16 @@ public class BoltMcScreen extends Screen {
         UiTheme.toggle(g, cx2 - 30, it.y + it.h / 2 - 5, a);
     }
 
+    private void drawAccount(GuiGraphicsExtractor g, Item it, int mx, int my) {
+        card(g, "account", cx1, it.y, cx2, it.y + it.h, mx, my);
+        boolean in = AccountManager.loggedIn();
+        label(g, UiTheme.BOLD + (in ? "Signed in as " + AccountManager.name() : "Not signed in"), cx1 + 10, it.y + 7, UiTheme.TEXT);
+        String sub = !AccountManager.hasServer() ? "No relay server is set (see server/README.md)."
+                : in ? "Click to sign out." : "Click to register or log in (needed for friends and chat).";
+        label(g, fit(sub, cx2 - cx1 - 40), cx1 + 10, it.y + 18, UiTheme.SUB);
+        g.fill(cx2 - 16, it.y + it.h / 2 - 3, cx2 - 10, it.y + it.h / 2 + 3, in ? 0xFF2FB344 : 0xFFE09B1A);
+    }
+
     private void drawCosmetic(GuiGraphicsExtractor g, Item it, int mx, int my) {
         Cosmetic c = it.cosmetic;
         card(g, "cos:" + c, cx1, it.y, cx2, it.y + it.h, mx, my);
@@ -451,7 +494,7 @@ public class BoltMcScreen extends Screen {
 
     private void drawAddFriend(GuiGraphicsExtractor g, Item it) {
         UiTheme.box(g, cx1, it.y, cx2, it.y + it.h, UiTheme.CARD, UiTheme.BORDER);
-        label(g, "Type a player's name (original or cracked), then press Add.", cx1 + 10, it.y + 5, UiTheme.SUB);
+        label(g, "Type a player's name. They must have Bolt Mc too.", cx1 + 10, it.y + 5, UiTheme.SUB);
         int fx1 = cx1 + 10, fx2 = cx2 - 76, fy = it.y + 18;
         UiTheme.box(g, fx1, fy, fx2, fy + 16, UiTheme.FIELD, addFriendBox.isFocused() ? UiTheme.BLUE : UiTheme.BORDER);
         String v = addFriendBox.getValue();

@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.boltmc.BoltMcConfig;
+import dev.boltmc.account.AccountManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -16,7 +17,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -90,18 +90,21 @@ public final class ChatRelay {
 
         String base = baseUrl();
         if (base == null) { status = "Not set up"; return; }
-        ensureSecret();
+        if (!AccountManager.loggedIn()) { status = "Not signed in"; return; }
 
         JsonObject body = new JsonObject();
         body.addProperty("from", me);
         body.addProperty("to", to);
-        body.addProperty("secret", BoltMcConfig.get().secret);
+        body.addProperty("token", BoltMcConfig.get().secret);
         body.addProperty("text", text);
         post(base + "/send", body).whenComplete((resp, err) -> {
             if (err != null) {
                 status = "Relay unreachable";
-            } else if (resp.statusCode() == 403) {
-                status = "Your name is already taken by someone else on the relay";
+            } else if (resp.statusCode() == 401 || resp.statusCode() == 403) {
+                AccountManager.invalidate();
+                status = "Not signed in";
+            } else if (resp.statusCode() == 404) {
+                status = "That player doesn't have Bolt Mc";
             } else if (resp.statusCode() / 100 != 2) {
                 status = "Relay error " + resp.statusCode();
             } else {
@@ -113,15 +116,15 @@ public final class ChatRelay {
     private static void poll() {
         String base = baseUrl();
         if (base == null) { status = "Not set up"; return; }
-        ensureSecret();
+        if (!AccountManager.loggedIn()) { status = "Not signed in"; return; }
 
         JsonObject body = new JsonObject();
         body.addProperty("name", myName());
-        body.addProperty("secret", BoltMcConfig.get().secret);
+        body.addProperty("token", BoltMcConfig.get().secret);
 
         post(base + "/inbox", body).whenComplete((resp, err) -> {
             if (err != null) { status = "Relay unreachable"; return; }
-            if (resp.statusCode() == 403) { status = "Your name is already taken by someone else on the relay"; return; }
+            if (resp.statusCode() == 401 || resp.statusCode() == 403) { AccountManager.invalidate(); status = "Not signed in"; return; }
             if (resp.statusCode() / 100 != 2) { status = "Relay error " + resp.statusCode(); return; }
             try {
                 JsonObject root = JsonParser.parseString(resp.body()).getAsJsonObject();
@@ -159,15 +162,7 @@ public final class ChatRelay {
         }
     }
 
-    private static void ensureSecret() {
-        BoltMcConfig cfg = BoltMcConfig.get();
-        if (cfg.secret == null || cfg.secret.length() < 16) {
-            cfg.secret = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
-            BoltMcConfig.save();
-        }
-    }
-
-    private static String baseUrl() {
+    public static String baseUrl() {
         BoltMcConfig cfg = BoltMcConfig.get();
         String u = (cfg.serverUrl == null || cfg.serverUrl.isBlank()
                 ? BoltMcConfig.DEFAULT_SERVER_URL : cfg.serverUrl).trim();
@@ -176,7 +171,7 @@ public final class ChatRelay {
         return u;
     }
 
-    private static CompletableFuture<HttpResponse<String>> post(String url, JsonObject body) {
+    public static CompletableFuture<HttpResponse<String>> post(String url, JsonObject body) {
         HttpRequest req = HttpRequest.newBuilder(URI.create(url))
                 .timeout(Duration.ofSeconds(8))
                 .header("Content-Type", "application/json")
