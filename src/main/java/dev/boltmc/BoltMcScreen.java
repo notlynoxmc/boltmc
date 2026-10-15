@@ -115,7 +115,13 @@ public class BoltMcScreen extends Screen {
 
         for (Cosmetic c : Cosmetic.values()) {
             Button tbtn = Button.builder(Component.empty(), b -> {
-                cfg.state(c).on = !cfg.state(c).on;
+                boolean now = !cfg.state(c).on;
+                if (now && c.slot == Cosmetic.Slot.HAT) { // only one hat at a time
+                    for (Cosmetic o : Cosmetic.values()) {
+                        if (o != c && o.slot == Cosmetic.Slot.HAT) cfg.state(o).on = false;
+                    }
+                }
+                cfg.state(c).on = now;
                 BoltMcConfig.save();
             }).bounds(cx1, cardTop, 20, 10).build();
             cosmeticToggleButtons.add(tbtn);

@@ -4,8 +4,11 @@
   "version": "${version}",
   "name": "Bolt Mc",
   "icon": "assets/boltmc/icon.png",
-  "description": "Recolorable particle aura and a simple friends chat.",
+  "description": "3D cosmetics (wings, halo, hats), a recolorable particle aura and a simple friends chat.",
   "environment": "client",
+  "mixins": [
+    "boltmc.mixins.json"
+  ],
   "entrypoints": {
     "client": [
       "dev.boltmc.BoltMcClient"
