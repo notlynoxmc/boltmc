@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "boltmc",
+  "version": "${version}",
+  "name": "Bolt Mc",
+  "icon": "assets/boltmc/icon.png",
+  "description": "Recolorable particle aura and a simple friends chat.",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.boltmc.BoltMcClient"
+    ],
+    "modmenu": [
+      "dev.boltmc.BoltMcModMenu"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2",
+    "java": ">=25"
+  },
+  "recommends": {
+    "modmenu": "*"
+  }
+}
