@@ -1,0 +1,1 @@
+package dev.boltmc.mixin;

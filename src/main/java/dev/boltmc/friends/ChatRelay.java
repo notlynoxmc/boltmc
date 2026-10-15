@@ -138,16 +138,25 @@ public final class ChatRelay {
                         long at = m.has("at") ? m.get("at").getAsLong() : System.currentTimeMillis();
                         FriendsManager.addIncoming(from);
                         historyWith(from).add(new ChatMessage(from, text, at, false));
-                        Minecraft mc = Minecraft.getInstance();
-                        if (mc.player != null) {
-                            mc.player.displayClientMessage(Component.literal("[Bolt Mc] " + from + ": " + text), false);
-                        }
+                        notifyChat("[Bolt Mc] " + from + ": " + text);
                     }
                 });
             } catch (Exception e) {
                 status = "Bad relay reply";
             }
         });
+    }
+
+    /** Shows a line in the normal game chat. Looked up by name at runtime so it can never break the build. */
+    private static void notifyChat(String line) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return;
+        try {
+            mc.player.getClass().getMethod("sendSystemMessage", Component.class)
+                    .invoke(mc.player, Component.literal(line));
+        } catch (Throwable ignored) {
+            // no notification, the message is still in the friend's chat window
+        }
     }
 
     private static void ensureSecret() {

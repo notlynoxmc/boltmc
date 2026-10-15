@@ -1,0 +1,7 @@
+{
+  "required": false,
+  "package": "dev.boltmc.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [],
+  "injectors": { "defaultRequire": 0 }
+}
