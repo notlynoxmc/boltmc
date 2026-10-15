@@ -50,7 +50,7 @@ public final class AccountManager {
         CompletableFuture.delayedExecutor(300, TimeUnit.MILLISECONDS).execute(() ->
                 Minecraft.getInstance().execute(() -> {
                     Minecraft mc = Minecraft.getInstance();
-                    if (prompted || mc.screen != title) return;
+                    if (prompted) return;
                     prompted = true;
                     mc.setScreenAndShow(new BoltMcAuthScreen(title));
                 }));
